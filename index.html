@@ -47,7 +47,8 @@
       background:#f59e0b;
       color:#111827;
       font-weight:bold;
-      cursor:pointer
+      cursor:pointer;
+      border:none;
     }
     .piece-row{
       display:grid;
@@ -90,7 +91,7 @@
     <div class="card grid grid-2">
       <div>
         <label>Cliente
-          <input id="clientName" placeholder="Ej: Juan PÈrez">
+          <input id="clientName" placeholder="Ej: Juan P√©rez">
         </label>
       </div>
       <div>
@@ -102,9 +103,9 @@
 
     <div class="card">
       <h2>Piezas</h2>
-      <p class="small">Ingresa cada pieza del mueble con sus medidas en milÌmetros.</p>
+      <p class="small">Ingresa cada pieza del mueble con sus medidas en mil√≠metros.</p>
       <div id="pieces"></div>
-      <button onclick="addPiece()">+ Agregar pieza</button>
+      <button type="button" onclick="addPiece()">+ Agregar pieza</button>
     </div>
 
     <div class="card grid grid-2">
@@ -178,86 +179,96 @@
     <div class="card">
       <h2>Resultados</h2>
       <p class="result" id="resultBoards">Tableros estimados: 0</p>
-      <p class="result" id="resultArea">¡rea total: 0.00 m≤</p>
+      <p class="result" id="resultArea">√Årea total: 0.00 m¬≤</p>
       <p class="result" id="resultCost">Costo total: $0.00</p>
       <p class="result" id="resultPrice">Precio sugerido: $0.00</p>
 
-      <button onclick="calculate()">Calcular</button>
-      <button onclick="window.print()" style="margin-top:10px">Guardar / Imprimir PDF</button>
+      <button type="button" onclick="calculate()">Calcular</button>
+      <button type="button" onclick="window.print()" style="margin-top:10px">Guardar / Imprimir PDF</button>
     </div>
   </div>
 
 <script>
-let pieces = [
-  {name:'Lateral', width:1800, height:500, qty:2},
-  {name:'Base', width:800, height:500, qty:2},
-  {name:'Puerta', width:1750, height:400, qty:2},
-];
+  let pieces = [
+    { name: 'Lateral', width: 1800, height: 500, qty: 2 },
+    { name: 'Base', width: 800, height: 500, qty: 2 },
+    { name: 'Puerta', width: 1750, height: 400, qty: 2 }
+  ];
 
-function renderPieces(){
-  const container = document.getElementById('pieces');
-  container.innerHTML='';
+  function renderPieces() {
+    const container = document.getElementById('pieces');
+    container.innerHTML = '';
 
-  pieces.forEach((p,i)=>{
-    const row=document.createElement('div');
-    row.className='piece-row';
+    for (let i = 0; i < pieces.length; i++) {
+      const p = pieces[i];
 
-    row.innerHTML=`
-      <input value="${p.name}" onchange="pieces[${i}].name=this.value" placeholder="Nombre pieza">
-      <input type="number" value="${p.width}" onchange="pieces[${i}].width=Number(this.value)" placeholder="Ancho">
-      <input type="number" value="${p.height}" onchange="pieces[${i}].height=Number(this.value)" placeholder="Alto">
-      <input type="number" value="${p.qty}" onchange="pieces[${i}].qty=Number(this.value)" placeholder="Cant.">
-      <button onclick="removePiece(${i})">X</button>
-    `;
+      const row = document.createElement('div');
+      row.className = 'piece-row';
 
-    container.appendChild(row);
-  });
-}
+      row.innerHTML =
+        '<input placeholder="Nombre pieza" value="' + p.name + '" onchange="updatePiece(' + i + ', \'name\', this.value)">' +
+        '<input type="number" placeholder="Ancho" value="' + p.width + '" onchange="updatePiece(' + i + ', \'width\', this.value)">' +
+        '<input type="number" placeholder="Alto" value="' + p.height + '" onchange="updatePiece(' + i + ', \'height\', this.value)">' +
+        '<input type="number" placeholder="Cant." value="' + p.qty + '" onchange="updatePiece(' + i + ', \'qty\', this.value)">' +
+        '<button type="button" onclick="removePiece(' + i + ')">X</button>';
 
-function addPiece(){
-  pieces.push({name:'',width:0,height:0,qty:1});
+      container.appendChild(row);
+    }
+  }
+
+  function updatePiece(index, field, value) {
+    if (field === 'width' || field === 'height' || field === 'qty') {
+      pieces[index][field] = Number(value);
+    } else {
+      pieces[index][field] = value;
+    }
+  }
+
+  function addPiece() {
+    pieces.push({ name: '', width: 0, height: 0, qty: 1 });
+    renderPieces();
+  }
+
+  function removePiece(index) {
+    pieces.splice(index, 1);
+    renderPieces();
+  }
+
+  function setMaterialPrice() {
+    const material = document.getElementById('materialType');
+    document.getElementById('boardPrice').value = material.value;
+  }
+
+  function calculate() {
+    const boardW = Number(document.getElementById('boardW').value);
+    const boardH = Number(document.getElementById('boardH').value);
+    const boardPrice = Number(document.getElementById('boardPrice').value);
+    const wastePct = Number(document.getElementById('wastePct').value);
+    const edgeBand = Number(document.getElementById('edgeBand').value);
+    const hardware = Number(document.getElementById('hardware').value);
+    const labor = Number(document.getElementById('labor').value);
+    const transport = Number(document.getElementById('transport').value);
+    const profitPct = Number(document.getElementById('profitPct').value);
+
+    const boardArea = (boardW * boardH) / 1000000;
+    const totalArea = pieces.reduce((sum, p) => sum + ((p.width * p.height) / 1000000) * p.qty, 0);
+    const totalPerimeter = pieces.reduce((sum, p) => sum + (((p.width * 2 + p.height * 2) / 1000) * p.qty), 0);
+
+    const boards = Math.ceil(totalArea / boardArea);
+    const boardCost = boards * boardPrice;
+    const wasteCost = boardCost * (wastePct / 100);
+    const edgeCost = totalPerimeter * edgeBand;
+
+    const subtotal = boardCost + wasteCost + edgeCost + hardware + labor + transport;
+    const finalPrice = subtotal * (1 + profitPct / 100);
+
+    document.getElementById('resultBoards').innerText = 'Tableros estimados: ' + boards;
+    document.getElementById('resultArea').innerText = '√Årea total: ' + totalArea.toFixed(2) + ' m¬≤';
+    document.getElementById('resultCost').innerText = 'Costo total: $' + subtotal.toFixed(2);
+    document.getElementById('resultPrice').innerText = 'Precio sugerido: $' + finalPrice.toFixed(2);
+  }
+
   renderPieces();
-}
-
-function removePiece(i){
-  pieces.splice(i,1);
-  renderPieces();
-}
-
-function setMaterialPrice(){
-  document.getElementById('boardPrice').value = document.getElementById('materialType').value;
-}
-
-function calculate(){
-  const boardW = +document.getElementById('boardW').value;
-  const boardH = +document.getElementById('boardH').value;
-  const boardPrice = +document.getElementById('boardPrice').value;
-  const wastePct = +document.getElementById('wastePct').value;
-  const edgeBand = +document.getElementById('edgeBand').value;
-  const hardware = +document.getElementById('hardware').value;
-  const labor = +document.getElementById('labor').value;
-  const transport = +document.getElementById('transport').value;
-  const profitPct = +document.getElementById('profitPct').value;
-
-  const boardArea = (boardW * boardH) / 1000000;
-  const totalArea = pieces.reduce((s,p)=>s+((p.width*p.height)/1000000)*p.qty,0);
-  const totalPerimeter = pieces.reduce((s,p)=>s+(((p.width*2+p.height*2)/1000)*p.qty),0);
-
-  const boards = Math.ceil(totalArea / boardArea);
-  const boardCost = boards * boardPrice;
-  const wasteCost = boardCost * (wastePct / 100);
-  const edgeCost = totalPerimeter * edgeBand;
-
-  const subtotal = boardCost + wasteCost + edgeCost + hardware + labor + transport;
-  const finalPrice = subtotal * (1 + profitPct / 100);
-
-  document.getElementById('resultBoards').innerText = Tableros estimados: ${boards};
-  document.getElementById('resultArea').innerText = ¡rea total: ${totalArea.toFixed(2)} m≤;
-  document.getElementById('resultCost').innerText = Costo total: $${subtotal.toFixed(2)};
-  document.getElementById('resultPrice').innerText = Precio sugerido: $${finalPrice.toFixed(2)};
-}
-
-renderPieces();
 </script>
 </body>
 </html>
